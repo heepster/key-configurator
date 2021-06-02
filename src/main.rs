@@ -1,6 +1,5 @@
 use evdev_rs::{InputEvent, enums::{EV_KEY, EventCode, EventType}};
-use std::{fs::{File}};
-use evdev_rs::ReadFlag;
+use std::{fs::{self, File}};
 
 use std::collections::HashSet;
 
@@ -30,15 +29,18 @@ fn get_event_key(event: &InputEvent) -> Option<EV_KEY> {
     }
 }
 
+
+
 fn main() {
-    let fd_path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
-    let device_in = kb_in::open_device(fd_path);
+    let keyboard_fd_path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+    let device_in = kb_in::KeyboardInput::new(keyboard_fd_path);
+
     let device_out = kb_out::open_device();
 
     let mut keys_pressed = HashSet::<EV_KEY>::new();
 
     loop {
-        let event_result = device_in.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING).map(|val| val.1);
+        let event_result = device_in.next_event();
 
         if event_result.is_err() {
             println!("{}", event_result.err().unwrap());

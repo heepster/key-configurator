@@ -54,6 +54,7 @@ dependencies = [
  "evdev-rs",
  "libc",
  "uinput-sys",
+ "xcb",
 ]
 
 [[package]]
@@ -85,4 +86,14 @@ checksum = "9aabddd8174ccadd600afeab346bb276cb1db5fafcf6a7c5c5708b8cc4b2cac7"
 dependencies = [
  "ioctl-sys",
  "libc",
+]
+
+[[package]]
+name = "xcb"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62056f63138b39116f82a540c983cc11f1c90cd70b3d492a70c25eaa50bd22a6"
+dependencies = [
+ "libc",
+ "log",
 ]

@@ -4,7 +4,10 @@ use std::{fs::File, io::Write};
 use libc::{input_event as raw_event};
 use evdev_rs::{InputEvent, TimeVal, enums::{EV_KEY, EV_SYN, EventCode}};
 
-pub fn emit_input_event(mut fd: &File, input_event: InputEvent) {
+use crate::kb_in::KeyEvent;
+use crate::kb_in::KeyValue;
+
+fn emit_input_event(mut fd: &File, input_event: InputEvent) {
     unsafe {
         let input_bytes = slice::from_raw_parts(
             mem::transmute(&input_event.as_raw() as *const raw_event),
@@ -14,7 +17,7 @@ pub fn emit_input_event(mut fd: &File, input_event: InputEvent) {
     }
 }
 
-pub fn emit_event(fd: &File, event_code: EventCode, value: i32) {
+fn emit_event(fd: &File, event_code: EventCode, value: i32) {
     let key_input_event = InputEvent::new(
         &TimeVal {
             tv_sec: 0,
@@ -37,17 +40,29 @@ pub fn emit_event(fd: &File, event_code: EventCode, value: i32) {
     emit_input_event(fd, sync_input_event);
 }
 
-pub fn emit_key(fd: &File, key_code: EV_KEY, value: i32) {
+pub fn emit_key(fd: &File, key_code: EV_KEY, value: KeyValue) {
+    let event_value = match value {
+        KeyValue::On => 1,
+        KeyValue::Off => 0,
+        KeyValue::Hold => 2,
+        _ => 0,
+    };
     let event_code = EventCode::EV_KEY(key_code);
-    emit_event(fd, event_code, value)
+    emit_event(fd, event_code, event_value)
 }
 
-pub fn emit_key_sequence(fd: &File, key_code_list: Vec<EV_KEY>) {
+pub fn emit_key_sequence(fd: &File, key_code_list: Vec<EV_KEY>, value: KeyValue) {
     for key_code in &key_code_list {
-        emit_key(fd, key_code.clone(), 1);
+        emit_key(fd, key_code.clone(), value.clone());
+    }
+}
+
+pub fn emit_key_sequence_toggle(fd: &File, key_code_list: Vec<EV_KEY>) {
+    for key_code in &key_code_list {
+        emit_key(fd, key_code.clone(), KeyValue::On);
     }
     for key_code in &key_code_list {
-        emit_key(fd, key_code.clone(), 0);
+        emit_key(fd, key_code.clone(), KeyValue::Off);
     }
 }
 

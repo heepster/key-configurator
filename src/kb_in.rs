@@ -1,9 +1,24 @@
 use std::{fs::{self,File}, io::Error};
-use evdev_rs::{Device, InputEvent, enums::EventType};
+use evdev_rs::{Device, InputEvent, enums::{EV_KEY, EventCode, EventType}};
 use evdev_rs::ReadFlag;
 
 pub struct KeyboardInput {
     device: Box<Device>
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum KeyValue {
+    On,
+    Off,
+    Hold
+}
+
+type KeyCode = EV_KEY;
+
+#[derive(PartialEq)]
+pub struct KeyEvent {
+    pub code: KeyCode,
+    pub value: KeyValue,
 }
 
 impl KeyboardInput {
@@ -13,7 +28,7 @@ impl KeyboardInput {
       }
     }
 
-    pub fn next_event(&self) -> InputEvent {
+    pub fn next_event(&self) -> KeyEvent {
         loop {
             let event_result = self.device.next_event(
                 ReadFlag::NORMAL |
@@ -28,12 +43,38 @@ impl KeyboardInput {
             let event = event_result.ok().unwrap();
 
             if event.event_type().unwrap() == EventType::EV_SYN ||
-               event.event_type().unwrap() == EventType::EV_MSC {
+               event.event_type().unwrap() == EventType::EV_MSC ||
+               event.event_type().unwrap() != EventType::EV_KEY {
                 continue;
             }
 
-            return event;
+            // Todo -- ensure compiler knows event type is EV_KEY
+            // so we don't have to return an option
+            return get_key_event(&event).unwrap();
         }
+    }
+}
+
+fn get_key_value(val: i32) -> KeyValue {
+    match val {
+        0 => KeyValue::Off,
+        1 => KeyValue::On,
+        2 => KeyValue::Hold,
+        _ => KeyValue::Off,
+    }
+}
+
+fn get_key_event(event: &InputEvent) -> Option<KeyEvent> {
+    match event.event_code {
+        EventCode::EV_KEY(key_code) =>
+            return Some(
+                KeyEvent{
+                    code: key_code,
+                    value: get_key_value(event.value)
+                }
+            ),
+        _ =>
+            return None,
     }
 }
 

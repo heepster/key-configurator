@@ -34,6 +34,10 @@ struct Config {
     pub singles: HashMap<EV_KEY, EV_KEY>,
 }
 
+struct State {
+    pub pressed: HashSet<EV_KEY>,
+}
+
 fn main() {
 
     //let (conn, screen_num) = xcb::Connection::connect(None).unwrap();
@@ -65,6 +69,9 @@ fn main() {
         config.singles.insert(from, to);
     }
 
+
+    let mut state = State { pressed: HashSet::new() };
+
     let keyboard_fd_path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
     let device_in = kb_in::KeyboardInput::new(keyboard_fd_path);
 
@@ -73,18 +80,7 @@ fn main() {
     let mut keys_pressed = HashSet::<EV_KEY>::new();
 
     loop {
-        let event_result = device_in.next_event();
-        if event_result.is_err() {
-            println!("{}", event_result.err().unwrap());
-            continue;
-        }
-
-        let event = event_result.ok().unwrap();
-
-        if event.event_type().unwrap() == EventType::EV_SYN ||
-           event.event_type().unwrap() == EventType::EV_MSC {
-            continue;
-        }
+        let event = device_in.next_event();
 
         let mut key_code_opt = get_event_key(&event);
 

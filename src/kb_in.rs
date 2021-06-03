@@ -1,5 +1,5 @@
 use std::{fs::{self,File}, io::Error};
-use evdev_rs::{Device, InputEvent};
+use evdev_rs::{Device, InputEvent, enums::EventType};
 use evdev_rs::ReadFlag;
 
 pub struct KeyboardInput {
@@ -13,13 +13,27 @@ impl KeyboardInput {
       }
     }
 
-    pub fn next_event(&self) -> Result<InputEvent, Error> {
-        let event_result = self.device.next_event(
-            ReadFlag::NORMAL |
-            ReadFlag::BLOCKING
-        ).map(|val| val.1);
+    pub fn next_event(&self) -> InputEvent {
+        loop {
+            let event_result = self.device.next_event(
+                ReadFlag::NORMAL |
+                ReadFlag::BLOCKING
+            ).map(|val| val.1);
 
-        return event_result;
+            if event_result.is_err() {
+                println!("{}", event_result.err().unwrap());
+                continue;
+            }
+
+            let event = event_result.ok().unwrap();
+
+            if event.event_type().unwrap() == EventType::EV_SYN ||
+               event.event_type().unwrap() == EventType::EV_MSC {
+                continue;
+            }
+
+            return event;
+        }
     }
 }
 

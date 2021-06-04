@@ -59,9 +59,11 @@ pub fn emit_key_sequence(fd: &File, key_code_list: Vec<EV_KEY>, value: KeyValue)
 
 pub fn emit_key_sequence_toggle(fd: &File, key_code_list: Vec<EV_KEY>) {
     for key_code in &key_code_list {
+        println!("Emitting {:?}, {:?}", key_code.clone(), KeyValue::On);
         emit_key(fd, key_code.clone(), KeyValue::On);
     }
     for key_code in &key_code_list {
+        println!("Emitting {:?}, {:?}", key_code.clone(), KeyValue::Off);
         emit_key(fd, key_code.clone(), KeyValue::Off);
     }
 }

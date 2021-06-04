@@ -10,10 +10,13 @@ mod kb_in;
 
 fn handle_meta_combo(fd: &File, state: &State, config: &Config, key_code: &EV_KEY) -> bool {
     let current_combo = state.pressed.iter().map(|k| k.clone()).collect::<Vec<EV_KEY>>();
+    println!("Current combo {:?}", current_combo);
     let current_combo_key = get_combo_key(current_combo);
+    println!("Current combo key {:?}", current_combo_key);
 
     if config.combos.contains_key(&current_combo_key) {
         let key_sequence = config.combos.get(&current_combo_key).unwrap().clone();
+        println!("Emitting key sequence {:?}", key_sequence);
         emitter::emit_key_sequence(&fd, key_sequence.clone(), KeyValue::Off);
         emitter::emit_key_sequence_toggle(&fd, key_sequence.clone());
         return true;
@@ -24,11 +27,12 @@ fn handle_meta_combo(fd: &File, state: &State, config: &Config, key_code: &EV_KE
 fn get_combo_key(key_sequence: Vec<EV_KEY>) -> String {
     return key_sequence
         .iter()
-        .map(|k| (k.clone() as u32).to_string())
+        .map(|k| (k.clone() as i32).to_string())
         .collect::<Vec<String>>()
         .join("-");
 }
 
+#[derive(Debug)]
 struct Config {
     pub singles: HashMap<EV_KEY, EV_KEY>,
     pub combos: HashMap<String, Vec<EV_KEY>>
@@ -40,7 +44,7 @@ struct State {
 
 fn main() {
     std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(15));
+        std::thread::sleep(std::time::Duration::from_secs(30));
         std::process::exit(0);
     });
 
@@ -61,6 +65,14 @@ fn main() {
     ];
 
     let combo_transform_cfg = [
+        [
+            [EV_KEY::KEY_LEFTALT, EV_KEY::KEY_C],
+            [EV_KEY::KEY_LEFTCTRL, EV_KEY::KEY_C]
+        ],
+        [
+            [EV_KEY::KEY_LEFTALT, EV_KEY::KEY_V],
+            [EV_KEY::KEY_LEFTCTRL, EV_KEY::KEY_V]
+        ],
         [
             [EV_KEY::KEY_LEFTMETA, EV_KEY::KEY_C],
             [EV_KEY::KEY_LEFTCTRL, EV_KEY::KEY_C]
@@ -92,9 +104,14 @@ fn main() {
         config.combos.insert(key.clone(), to_combo.to_vec());
     }
 
+    println!("{:?}", config);
+
     let mut state = State { pressed: VecDeque::new() };
 
-    let keyboard_fd_path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+
+    //let keyboard_fd_path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+    let keyboard_fd_path = "/dev/input/by-path/pci-0000:00:14.0-usb-0:10.4.1:1.0-event-kbd";
+
     let device_in = kb_in::KeyboardInput::new(keyboard_fd_path);
 
     let device_out = kb_out::open_device();

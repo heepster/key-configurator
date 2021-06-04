@@ -9,6 +9,15 @@ This project is a simple Rust program that intercepts key events and translates 
 
 Lots of things are hardcoded for now (like the file descriptor name of my laptop's keyboard -- heh) but one day I'd like to make a flexible / configurable keyboard configurator like Karabiner on OSX.
 
+# Requirements
+* libevdev
+
+# Installation
+## Ubuntu
+```
+sudo apt install libevdev-dev
+```
+
 # Usage
 
 ```

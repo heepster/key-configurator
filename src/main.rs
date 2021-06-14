@@ -1,6 +1,6 @@
 use evdev_rs::{enums::{EV_KEY, EventCode, EventType}};
 use std::{collections::{HashMap, VecDeque}, fs::{File}, os::unix::process};
-use xcb::Connection;
+use xcb::{Connection, ffi::{XCB_PROPERTY_NOTIFY, xcb_property_notify_event_t}};
 
 use crate::kb_in::KeyValue;
 
@@ -48,16 +48,65 @@ fn main() {
         std::process::exit(0);
     });
 
-    //let (conn, screen_num) = xcb::Connection::connect(None).unwrap();
-    //loop  {
-    //    let reply = xcb::xproto::get_input_focus(&conn).get_reply().unwrap();
-    //    let window_ptr = reply.focus();
-    //    let window = xcb::xproto::get_window_attributes(&conn, window_ptr).get_reply().unwrap();
-    //    window.
+    let (conn, screen_num) = xcb::Connection::connect(None).unwrap();
+    loop {
+        unsafe {
+            let focus_cookie = xcb::ffi::xproto::xcb_get_input_focus(conn.get_raw_conn());
+            let focus_reply = xcb::ffi::xproto::xcb_get_input_focus_reply(
+                conn.get_raw_conn(),
+                focus_cookie,
+                std::ptr::null_mut(),
+            );
+            let window = (*focus_reply).focus;
+            let attributes_reply = xcb::xproto::get_property(
+                &conn,
+                false,
+                window,
+                xcb::xproto::ATOM_WM_CLASS,
+                xcb::xproto::ATOM_STRING,
+                0,
+                16
+            ).get_reply().unwrap();
+            let mut buf = Vec::new();
+            let value: &[u8]  = attributes_reply.value();
+            buf.extend_from_slice(value);
+            let string_title = String::from_utf8(buf).unwrap();
+            println!("{}", string_title);
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+    }
 
-    //    println!("{}", window);
-    //    std::thread::sleep(std::time::Duration::from_secs(3));
-    //}
+    loop {
+        unsafe {
+            let (conn, screen_num) = xcb::Connection::connect(None).unwrap();
+            let setup = xcb::ffi::base::xcb_get_setup(conn.get_raw_conn());
+            let screen = xcb::ffi::xproto::xcb_setup_roots_iterator(setup).data;
+            println!("{}", (*screen).width_in_pixels);
+            let screen_count = xcb::ffi::xproto::xcb_setup_roots_iterator(setup).rem;
+            let mut values = [ xcb::ffi::xproto::XCB_EVENT_MASK_PROPERTY_CHANGE ];
+
+            xcb::ffi::xproto::xcb_change_window_attributes(
+                 conn.get_raw_conn(),
+                 (*screen).root,
+                 xcb::ffi::xproto::XCB_CW_EVENT_MASK,
+                 values.as_mut_ptr()
+            );
+
+            xcb::Connection::flush(&conn);
+
+            println!("waiting for event");
+            let event = conn.wait_for_event();
+            if event.is_some() {
+                let event2 = event.unwrap();
+                if (event2.response_type()) == XCB_PROPERTY_NOTIFY {
+                    let event3 = xcb::cast_event::<xcb_property_notify_event_t>(&event2);
+                    println!("Event Window: {:?}", event3.atom);
+                }
+            } else {
+                println!("Event error");
+            }
+        }
+    }
 
     let single_transform_cfg = [
         [EV_KEY::KEY_CAPSLOCK,   EV_KEY::KEY_LEFTCTRL],
@@ -110,7 +159,8 @@ fn main() {
 
 
     //let keyboard_fd_path = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
-    let keyboard_fd_path = "/dev/input/by-path/pci-0000:00:14.0-usb-0:10.4.1:1.0-event-kbd";
+    let keyboard_fd_path = "/dev/input/by-path/pci-0000:00:14.0-usb-0:2.2.4.3:1.0-event-kbd";
+    //let keyboard_fd_path = "/dev/input/by-path/pci-0000:00:14.0-usb-0:10.4.1:1.0-event-kbd";
 
     let device_in = kb_in::KeyboardInput::new(keyboard_fd_path);
 
